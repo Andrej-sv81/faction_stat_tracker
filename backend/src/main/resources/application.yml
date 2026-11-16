@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dnd_simulator}
+    username: ${DATABASE_USERNAME:dnd}
+    password: ${DATABASE_PASSWORD:dnd}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties.hibernate.format_sql: true
+server:
+  port: ${PORT:8080}
+app:
+  jwt-secret: ${JWT_SECRET:change-this-development-secret-to-at-least-32-characters}
+  jwt-expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173}
