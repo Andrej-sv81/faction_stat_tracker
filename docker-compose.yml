@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment: {POSTGRES_DB: dnd_simulator, POSTGRES_USER: dnd, POSTGRES_PASSWORD: dnd}
+    ports: ["5432:5432"]
+    volumes: [db-data:/var/lib/postgresql/data]
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/dnd_simulator
+      DATABASE_USERNAME: dnd
+      DATABASE_PASSWORD: dnd
+      JWT_SECRET: change-this-development-secret-to-at-least-32-characters
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["8080:8080"]
+    depends_on: [db]
+  frontend:
+    build: ./frontend
+    ports: ["5173:80"]
+    depends_on: [backend]
+volumes: {db-data: {}}
