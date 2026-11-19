@@ -4,6 +4,12 @@ services:
     environment: {POSTGRES_DB: dnd_simulator, POSTGRES_USER: dnd, POSTGRES_PASSWORD: dnd}
     ports: ["5432:5432"]
     volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dnd -d dnd_simulator"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   backend:
     build: ./backend
     environment:
@@ -13,7 +19,9 @@ services:
       JWT_SECRET: change-this-development-secret-to-at-least-32-characters
       CORS_ORIGINS: http://localhost:5173
     ports: ["8080:8080"]
-    depends_on: [db]
+    depends_on:
+      db:
+        condition: service_healthy
   frontend:
     build: ./frontend
     ports: ["5173:80"]
