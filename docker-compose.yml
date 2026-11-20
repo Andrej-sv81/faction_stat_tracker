@@ -12,12 +12,8 @@ services:
       start_period: 10s
   backend:
     build: ./backend
-    environment:
-      DATABASE_URL: jdbc:postgresql://db:5432/dnd_simulator
-      DATABASE_USERNAME: dnd
-      DATABASE_PASSWORD: dnd
-      JWT_SECRET: change-this-development-secret-to-at-least-32-characters
-      CORS_ORIGINS: http://localhost:5173
+    env_file:
+      - .env.development
     ports: ["8080:8080"]
     depends_on:
       db:
