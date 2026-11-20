@@ -3,6 +3,10 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dnd_simulator}
     username: ${DATABASE_USERNAME:dnd}
     password: ${DATABASE_PASSWORD:dnd}
+    hikari:
+      minimum-idle: ${DATABASE_POOL_MIN_IDLE:5}
+      maximum-pool-size: ${DATABASE_POOL_MAX:10}
+      connection-timeout: ${DATABASE_POOL_TIMEOUT:30000}
   jpa:
     hibernate:
       ddl-auto: update

@@ -1,7 +1,39 @@
 package com.dnd.simulator.entity;
-import jakarta.persistence.*; import java.time.Instant; import com.fasterxml.jackson.annotation.JsonIgnore;
-@Entity public class SimulationLog {
- @Id @GeneratedValue(strategy=GenerationType.UUID) private String id; private Instant createdAt=Instant.now(); @Column(length=3000) private String message;
- @ManyToOne(optional=false) private World world;
- public SimulationLog(){} public SimulationLog(String m,World w){message=m;world=w;} public String getId(){return id;} public Instant getCreatedAt(){return createdAt;} public String getMessage(){return message;} @JsonIgnore public World getWorld(){return world;}
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import java.time.Instant;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@Entity
+public class SimulationLog {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private String id;
+
+  private Instant createdAt = Instant.now();
+
+  @Column(length = 3000)
+  private String message;
+
+  @ManyToOne(optional = false)
+  private World world;
+
+  public SimulationLog(String message, World world) {
+    this.message = message;
+    this.world = world;
+  }
+
+  @JsonIgnore
+  public World getWorld() {
+    return world;
+  }
 }

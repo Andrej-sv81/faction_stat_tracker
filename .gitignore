@@ -2,3 +2,14 @@
 node_modules/
 frontend/dist/
 backend/target/
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+!.env.development.example
+
+# Spring, Java, Maven, logs, and IDE output
+*.log
+backend/.idea/
+backend/.vscode/
