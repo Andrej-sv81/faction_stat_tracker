@@ -30,23 +30,26 @@ public class WorldService {
     this.logs = logs;
   }
 
-  public List<World> list(String email) {
-    return worlds.findByOwnerEmailOrderByCreatedAtDesc(email);
+  public List<World> list(String ownerId) {
+    return worlds.findByOwnerIdOrderByCreatedAtDesc(ownerId);
   }
 
-  public World get(String id, String email) {
+  public World get(String id, String ownerId) {
     return worlds
-        .findByIdAndOwnerEmail(id, email)
+        .findByIdAndOwnerId(id, ownerId)
         .orElseThrow(() -> new NoSuchElementException("World not found"));
   }
 
-  public World create(ApiDtos.WorldRequest request, String email) {
+  public World create(ApiDtos.WorldRequest request, String ownerId) {
     return worlds.save(
-        new World(request.name(), request.description(), users.findByEmail(email).orElseThrow()));
+        new World(
+            request.name(),
+            request.description(),
+            users.findById(ownerId).orElseThrow()));
   }
 
-  public Faction faction(String id, ApiDtos.FactionRequest request, String email) {
-    World world = get(id, email);
+  public Faction faction(String id, ApiDtos.FactionRequest request, String ownerId) {
+    World world = get(id, ownerId);
     return factions.save(
         fill(
             new Faction(
@@ -68,8 +71,8 @@ public class WorldService {
   }
 
   public Faction updateFaction(
-      String worldId, String factionId, ApiDtos.FactionRequest request, String email) {
-    get(worldId, email);
+      String worldId, String factionId, ApiDtos.FactionRequest request, String ownerId) {
+    get(worldId, ownerId);
     Faction faction =
         factions
             .findByIdAndWorldId(factionId, worldId)
@@ -77,16 +80,16 @@ public class WorldService {
     return factions.save(fill(faction, request));
   }
 
-  public void deleteFaction(String worldId, String factionId, String email) {
-    get(worldId, email);
+  public void deleteFaction(String worldId, String factionId, String ownerId) {
+    get(worldId, ownerId);
     factions.delete(
         factions
             .findByIdAndWorldId(factionId, worldId)
             .orElseThrow(() -> new NoSuchElementException("Faction not found")));
   }
 
-  public WorldEvent event(String id, ApiDtos.EventRequest request, String email) {
-    World world = get(id, email);
+  public WorldEvent event(String id, ApiDtos.EventRequest request, String ownerId) {
+    World world = get(id, ownerId);
     return applyEvent(
         new WorldEvent(
             request.title(),
@@ -140,7 +143,7 @@ public class WorldService {
         });
     World world =
         targets.isEmpty()
-            ? get(worldId, event.getWorld().getOwner().getEmail())
+            ? get(worldId, event.getWorld().getOwner().getId())
             : targets.get(0).getWorld();
     String changes =
         String.format(
@@ -154,8 +157,8 @@ public class WorldService {
   }
 
   public WorldEvent updateEvent(
-      String worldId, String eventId, ApiDtos.EventRequest request, String email) {
-    get(worldId, email);
+      String worldId, String eventId, ApiDtos.EventRequest request, String ownerId) {
+    get(worldId, ownerId);
     WorldEvent old =
         events
             .findByIdAndWorldId(eventId, worldId)
@@ -187,8 +190,8 @@ public class WorldService {
     return applyEvent(old, request, worldId);
   }
 
-  public void deleteEvent(String worldId, String eventId, String email) {
-    get(worldId, email);
+  public void deleteEvent(String worldId, String eventId, String ownerId) {
+    get(worldId, ownerId);
     events.delete(
         events
             .findByIdAndWorldId(eventId, worldId)
@@ -196,8 +199,8 @@ public class WorldService {
   }
 
   @Transactional
-  public Map<String, Object> simulate(String id, String email) {
-    World world = get(id, email);
+  public Map<String, Object> simulate(String id, String ownerId) {
+    World world = get(id, ownerId);
     List<Faction> available = factions.findByWorldId(id);
     if (available.isEmpty()) {
       String message = "The realm waits for its first faction.";
@@ -242,7 +245,7 @@ public class WorldService {
   }
 
   @Transactional
-  public World importSnapshot(JsonNode root, String email) {
+  public World importSnapshot(JsonNode root, String ownerId) {
     JsonNode source = root.has("world") ? root.get("world") : root;
     if (!source.hasNonNull("name") || source.path("name").asText().isBlank()) {
       throw new IllegalArgumentException("Import must contain a world name");
@@ -251,7 +254,7 @@ public class WorldService {
         create(
             new ApiDtos.WorldRequest(
                 source.path("name").asText(), source.path("description").asText("")),
-            email);
+            ownerId);
     if (root.has("factions") && root.get("factions").isArray()) {
       for (JsonNode faction : root.get("factions")) {
         faction(
@@ -266,7 +269,7 @@ public class WorldService {
                 faction.path("territory").asInt(1),
                 faction.path("imageUrl").asText(null),
                 faction.path("description").asText("")),
-            email);
+            ownerId);
       }
     }
     if (root.has("events") && root.get("events").isArray()) {
@@ -285,14 +288,14 @@ public class WorldService {
                 event.path("influenceDelta").asInt(),
                 event.path("territoryDelta").asInt(),
                 event.path("details").asText("")),
-            email);
+            ownerId);
       }
     }
     return world;
   }
 
-  public Map<String, Object> data(String id, String email) {
-    get(id, email);
+  public Map<String, Object> data(String id, String ownerId) {
+    get(id, ownerId);
     return Map.of(
         "factions",
         factions.findByWorldId(id),

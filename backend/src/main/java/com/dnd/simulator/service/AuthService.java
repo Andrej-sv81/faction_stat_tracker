@@ -22,8 +22,9 @@ public class AuthService {
   public AuthDtos.Token register(AuthDtos.Credentials c) {
     if (users.findByEmail(c.email()).isPresent())
       throw new IllegalArgumentException("Email already registered");
-    users.save(new AppUser(c.email().toLowerCase(), encoder.encode(c.password())));
-    return new AuthDtos.Token(jwt.create(c.email().toLowerCase()), c.email().toLowerCase());
+    AppUser user =
+        users.save(new AppUser(c.email().toLowerCase(), encoder.encode(c.password())));
+    return new AuthDtos.Token(jwt.create(user.getId()), user.getEmail());
   }
 
   public AuthDtos.Token login(AuthDtos.Credentials c) {
@@ -33,6 +34,6 @@ public class AuthService {
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
     if (!encoder.matches(c.password(), u.getPasswordHash()))
       throw new IllegalArgumentException("Invalid credentials");
-    return new AuthDtos.Token(jwt.create(u.getEmail()), u.getEmail());
+    return new AuthDtos.Token(jwt.create(u.getId()), u.getEmail());
   }
 }

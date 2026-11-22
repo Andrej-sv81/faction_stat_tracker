@@ -20,16 +20,16 @@ public class JwtService {
     this.expiration = expiration;
   }
 
-  public String create(String email) {
+  public String create(String userId) {
     return Jwts.builder()
-        .subject(email)
+        .subject(userId)
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + expiration))
         .signWith(key)
         .compact();
   }
 
-  public String email(String token) {
+  public String userId(String token) {
     return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload().getSubject();
   }
 }
