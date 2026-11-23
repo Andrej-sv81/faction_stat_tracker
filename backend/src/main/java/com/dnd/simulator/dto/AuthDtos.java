@@ -9,4 +9,6 @@ public final class AuthDtos {
   public record Token(String token, String email) {}
 
   public record TokenPair(String accessToken, String tokenType, long expiresIn, String email) {}
+
+  public record CsrfResponse(String headerName, String token) {}
 }
