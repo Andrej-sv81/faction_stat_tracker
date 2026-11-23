@@ -18,7 +18,7 @@ class JwtServiceTest {
   void usesUuidAsSubject() {
     String userId = UUID.randomUUID().toString();
 
-    String token = jwt.create(userId);
+    String token = jwt.createAccessToken(userId);
 
     assertEquals(userId, jwt.userId(token));
   }
@@ -30,7 +30,7 @@ class JwtServiceTest {
             "different-development-secret-that-is-at-least-32-characters",
             60_000);
 
-    String token = jwt.create(UUID.randomUUID().toString());
+    String token = jwt.createAccessToken(UUID.randomUUID().toString());
 
     assertThrows(JwtException.class, () -> otherJwt.userId(token));
   }
