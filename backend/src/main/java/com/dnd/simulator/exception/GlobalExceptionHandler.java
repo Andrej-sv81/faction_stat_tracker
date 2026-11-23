@@ -19,6 +19,15 @@ public class GlobalExceptionHandler {
         .body(Map.of("error", exception.getMessage()));
   }
 
+  @ExceptionHandler(TooManyRequestsException.class)
+  ResponseEntity<?> tooManyRequests(TooManyRequestsException exception) {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(
+            "Retry-After",
+            String.valueOf(exception.getRetryAfterSeconds()))
+        .body(Map.of("error", exception.getMessage()));
+  }
+
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<?> bad(IllegalArgumentException exception) {
     return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));

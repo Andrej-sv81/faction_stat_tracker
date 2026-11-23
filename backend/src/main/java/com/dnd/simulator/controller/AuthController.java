@@ -3,7 +3,9 @@ package com.dnd.simulator.controller;
 import com.dnd.simulator.dto.AuthDtos;
 import com.dnd.simulator.exception.AuthenticationException;
 import com.dnd.simulator.service.AuthService;
+import com.dnd.simulator.service.AuthenticationThrottleService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -21,13 +23,16 @@ public class AuthController {
   private final boolean cookieSecure;
   private final String cookieSameSite;
   private final long refreshExpirationMs;
+  private final AuthenticationThrottleService authenticationThrottle;
 
   public AuthController(
       AuthService service,
+      AuthenticationThrottleService authenticationThrottle,
       @Value("${app.cookie-secure:false}") boolean cookieSecure,
       @Value("${app.cookie-same-site:Strict}") String cookieSameSite,
       @Value("${app.refresh-expiration-ms:1209600000}") long refreshExpirationMs) {
     this.service = service;
+    this.authenticationThrottle = authenticationThrottle;
     this.cookieSecure = cookieSecure;
     this.cookieSameSite = cookieSameSite;
     this.refreshExpirationMs = refreshExpirationMs;
@@ -35,8 +40,13 @@ public class AuthController {
 
   @PostMapping("/register")
   public ResponseEntity<AuthDtos.TokenPair> register(
-      @Valid @RequestBody AuthDtos.Credentials credentials) {
+      @Valid @RequestBody AuthDtos.Credentials credentials,
+      HttpServletRequest request) {
+    authenticationThrottle.checkRegistrationAttempt(
+        request.getRemoteAddr());
     AuthService.AuthResult result = service.register(credentials);
+    authenticationThrottle.resetRegistrationAttempt(
+        request.getRemoteAddr());
     return ResponseEntity.status(HttpStatus.CREATED)
         .header(HttpHeaders.SET_COOKIE, refreshCookie(result.refreshToken()).toString())
         .body(result.tokens());
@@ -44,8 +54,21 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<AuthDtos.TokenPair> login(
-      @Valid @RequestBody AuthDtos.Credentials credentials) {
-    AuthService.AuthResult result = service.login(credentials);
+      @Valid @RequestBody AuthDtos.Credentials credentials,
+      HttpServletRequest request) {
+    String clientAddress = request.getRemoteAddr();
+    authenticationThrottle.checkLoginAttempt(
+        clientAddress,
+        credentials.email());
+    AuthService.AuthResult result;
+    try {
+      result = service.login(credentials);
+    } catch (AuthenticationException exception) {
+      throw exception;
+    }
+    authenticationThrottle.resetLoginAttempt(
+        clientAddress,
+        credentials.email());
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, refreshCookie(result.refreshToken()).toString())
         .body(result.tokens());

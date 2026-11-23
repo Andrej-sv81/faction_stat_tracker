@@ -21,3 +21,9 @@ app:
   cookie-secure: ${COOKIE_SECURE:false}
   cookie-same-site: ${COOKIE_SAME_SITE:Strict}
   cors-origins: ${CORS_ORIGINS:http://localhost:5173}
+  auth:
+    login-attempt-limit: ${AUTH_LOGIN_ATTEMPT_LIMIT:5}
+    login-window-seconds: ${AUTH_LOGIN_WINDOW_SECONDS:900}
+    registration-attempt-limit: ${AUTH_REGISTRATION_ATTEMPT_LIMIT:3}
+    registration-window-seconds: ${AUTH_REGISTRATION_WINDOW_SECONDS:3600}
+    cleanup-delay-ms: ${AUTH_THROTTLE_CLEANUP_DELAY_MS:300000}
