@@ -2,6 +2,8 @@ package com.dnd.simulator.service;
 
 import com.dnd.simulator.dto.AuthDtos;
 import com.dnd.simulator.entity.AppUser;
+import com.dnd.simulator.exception.AuthenticationException;
+import com.dnd.simulator.exception.DuplicateResourceException;
 import com.dnd.simulator.repository.AppUserRepository;
 import com.dnd.simulator.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +29,7 @@ public class AuthService {
 
   public AuthResult register(AuthDtos.Credentials credentials) {
     if (users.findByEmail(credentials.email()).isPresent())
-      throw new IllegalArgumentException("Email already registered");
+      throw new DuplicateResourceException("Email already registered");
     AppUser user =
         users.save(
             new AppUser(
@@ -40,9 +42,9 @@ public class AuthService {
     AppUser user =
         users
             .findByEmail(credentials.email().toLowerCase())
-            .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
     if (!encoder.matches(credentials.password(), user.getPasswordHash()))
-      throw new IllegalArgumentException("Invalid credentials");
+      throw new AuthenticationException("Invalid credentials");
     return createResult(user);
   }
 

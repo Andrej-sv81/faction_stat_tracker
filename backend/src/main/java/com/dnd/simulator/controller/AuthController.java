@@ -1,6 +1,7 @@
 package com.dnd.simulator.controller;
 
 import com.dnd.simulator.dto.AuthDtos;
+import com.dnd.simulator.exception.AuthenticationException;
 import com.dnd.simulator.service.AuthService;
 import jakarta.validation.Valid;
 import java.time.Duration;
@@ -61,7 +62,7 @@ public class AuthController {
   public ResponseEntity<AuthDtos.TokenPair> refresh(
       @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken) {
     if (refreshToken == null || refreshToken.isBlank()) {
-      throw new IllegalArgumentException("Refresh token is missing");
+      throw new AuthenticationException("Refresh token is missing");
     }
     AuthService.AuthResult result = service.refresh(refreshToken);
     return ResponseEntity.ok()

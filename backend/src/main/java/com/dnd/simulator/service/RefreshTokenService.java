@@ -2,6 +2,7 @@ package com.dnd.simulator.service;
 
 import com.dnd.simulator.entity.AppUser;
 import com.dnd.simulator.entity.RefreshToken;
+import com.dnd.simulator.exception.AuthenticationException;
 import com.dnd.simulator.repository.RefreshTokenRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -61,7 +62,10 @@ public class RefreshTokenService {
     RefreshToken token =
         refreshTokens
             .findByTokenHash(hash(rawToken))
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElse(null);
+    if (token == null) {
+      return;
+    }
     revokeFamily(token.getFamilyId(), Instant.now());
   }
 
@@ -77,15 +81,15 @@ public class RefreshTokenService {
     RefreshToken token =
         refreshTokens
             .findByTokenHash(hash(rawToken))
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElseThrow(() -> new AuthenticationException("Invalid refresh token"));
 
     Instant now = Instant.now();
     if (token.getRevokedAt() != null) {
       revokeFamily(token.getFamilyId(), now);
-      throw new IllegalArgumentException("Refresh token reuse detected");
+      throw new AuthenticationException("Refresh token reuse detected");
     }
     if (!token.getExpiresAt().isAfter(now)) {
-      throw new IllegalArgumentException("Refresh token expired");
+      throw new AuthenticationException("Refresh token expired");
     }
     return token;
   }

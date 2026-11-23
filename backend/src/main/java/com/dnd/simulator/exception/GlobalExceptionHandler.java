@@ -7,6 +7,18 @@ import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+  @ExceptionHandler(AuthenticationException.class)
+  ResponseEntity<?> unauthorized(AuthenticationException exception) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(DuplicateResourceException.class)
+  ResponseEntity<?> conflict(DuplicateResourceException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<?> bad(IllegalArgumentException exception) {
     return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
