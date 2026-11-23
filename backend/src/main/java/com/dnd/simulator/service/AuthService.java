@@ -37,13 +37,13 @@ public class AuthService {
   }
 
   public AuthResult login(AuthDtos.Credentials credentials) {
-    var u =
+    AppUser user =
         users
             .findByEmail(credentials.email().toLowerCase())
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-    if (!encoder.matches(credentials.password(), u.getPasswordHash()))
+    if (!encoder.matches(credentials.password(), user.getPasswordHash()))
       throw new IllegalArgumentException("Invalid credentials");
-    return createResult(u);
+    return createResult(user);
   }
 
   public AuthResult refresh(String rawRefreshToken) {

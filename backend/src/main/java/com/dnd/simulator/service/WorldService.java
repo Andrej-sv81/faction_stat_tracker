@@ -212,7 +212,7 @@ public class WorldService {
     Faction second =
         available.size() > 1
             ? available.stream()
-                .filter(f -> !f.getId().equals(first.getId()))
+                .filter(faction -> !faction.getId().equals(first.getId()))
                 .findAny()
                 .orElse(first)
             : first;

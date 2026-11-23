@@ -8,26 +8,28 @@ import org.springframework.web.bind.annotation.*;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
-  ResponseEntity<?> bad(IllegalArgumentException e) {
-    return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+  ResponseEntity<?> bad(IllegalArgumentException exception) {
+    return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
   }
 
   @ExceptionHandler(NoSuchElementException.class)
-  ResponseEntity<?> missing(NoSuchElementException e) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+  ResponseEntity<?> missing(NoSuchElementException exception) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  ResponseEntity<?> validation(MethodArgumentNotValidException e) {
+  ResponseEntity<?> validation(MethodArgumentNotValidException exception) {
     return ResponseEntity.badRequest()
         .body(
             Map.of(
                 "error",
                 "Validation failed",
                 "fields",
-                e.getBindingResult().getFieldErrors().stream()
+                exception.getBindingResult().getFieldErrors().stream()
                     .collect(
                         java.util.stream.Collectors.toMap(
-                            x -> x.getField(), x -> x.getDefaultMessage(), (a, b) -> a))));
+                            fieldError -> fieldError.getField(),
+                            fieldError -> fieldError.getDefaultMessage(),
+                            (firstMessage, secondMessage) -> firstMessage))));
   }
 }

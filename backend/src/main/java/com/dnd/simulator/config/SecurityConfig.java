@@ -25,31 +25,35 @@ public class SecurityConfig {
       HttpSecurity http, JwtFilter jwt, @Value("${app.cors-origins}") String origins)
       throws Exception {
     return http.csrf(
-            c ->
-                c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            csrf ->
+                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                     .ignoringRequestMatchers(
                         "/api/auth/register", "/api/auth/login", "/api/auth/csrf"))
         .cors(
-            c ->
-                c.configurationSource(
-                    r -> {
-                      var x = new CorsConfiguration();
-                      x.setAllowedOrigins(
+            cors ->
+                cors.configurationSource(
+                    request -> {
+                      var corsConfiguration = new CorsConfiguration();
+                      corsConfiguration.setAllowedOrigins(
                           java.util.Arrays.stream(origins.split(","))
                               .map(String::trim)
                               .filter(origin -> !origin.isBlank())
                               .toList());
-                      x.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                      x.setAllowedHeaders(
+                      corsConfiguration.setAllowedMethods(
+                          List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                      corsConfiguration.setAllowedHeaders(
                           List.of("Authorization", "Content-Type", "Accept", "X-XSRF-TOKEN"));
-                      x.setExposedHeaders(List.of("Set-Cookie"));
-                      x.setAllowCredentials(true);
-                      return x;
+                      corsConfiguration.setExposedHeaders(List.of("Set-Cookie"));
+                      corsConfiguration.setAllowCredentials(true);
+                      return corsConfiguration;
                     }))
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .sessionManagement(
+            sessionManagement ->
+                sessionManagement.sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
-            a ->
-                a.requestMatchers("/api/auth/**", "/actuator/health")
+            authorization ->
+                authorization.requestMatchers("/api/auth/**", "/actuator/health")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
