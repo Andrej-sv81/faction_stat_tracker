@@ -1,4 +1,15 @@
 spring:
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:25}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
+      mail.smtp.connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+      mail.smtp.timeout: ${MAIL_SMTP_TIMEOUT:5000}
+      mail.smtp.writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dnd_simulator}
     username: ${DATABASE_USERNAME:dnd}
@@ -26,4 +37,10 @@ app:
     login-window-seconds: ${AUTH_LOGIN_WINDOW_SECONDS:900}
     registration-attempt-limit: ${AUTH_REGISTRATION_ATTEMPT_LIMIT:3}
     registration-window-seconds: ${AUTH_REGISTRATION_WINDOW_SECONDS:3600}
+    password-reset-attempt-limit: ${AUTH_PASSWORD_RESET_ATTEMPT_LIMIT:3}
+    password-reset-window-seconds: ${AUTH_PASSWORD_RESET_WINDOW_SECONDS:3600}
     cleanup-delay-ms: ${AUTH_THROTTLE_CLEANUP_DELAY_MS:300000}
+  password-reset:
+    expiration-ms: ${PASSWORD_RESET_EXPIRATION_MS:900000}
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    from: ${MAIL_FROM:noreply@localhost}

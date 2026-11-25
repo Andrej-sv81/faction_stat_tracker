@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class AuthenticationThrottleServiceTest {
   private final AuthenticationThrottleService throttle =
-      new AuthenticationThrottleService(2, 900, 2, 3600);
+      new AuthenticationThrottleService(2, 900, 2, 3600, 2, 3600);
 
   @Test
   void limitsLoginAttemptsByIpAndEmail() {
@@ -59,5 +59,17 @@ class AuthenticationThrottleServiceTest {
 
     assertDoesNotThrow(
         () -> throttle.checkRegistrationAttempt("192.0.2.11"));
+  }
+
+  @Test
+  void limitsPasswordResetRequestsByIp() {
+    assertDoesNotThrow(
+        () -> throttle.checkPasswordResetRequest("192.0.2.12"));
+    assertDoesNotThrow(
+        () -> throttle.checkPasswordResetRequest("192.0.2.12"));
+
+    assertThrows(
+        TooManyRequestsException.class,
+        () -> throttle.checkPasswordResetRequest("192.0.2.12"));
   }
 }

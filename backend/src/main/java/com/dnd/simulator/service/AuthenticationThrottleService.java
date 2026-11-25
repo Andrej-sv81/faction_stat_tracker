@@ -19,17 +19,23 @@ public class AuthenticationThrottleService {
   private final Duration loginWindow;
   private final int registrationAttemptsLimit;
   private final Duration registrationWindow;
+  private final int passwordResetAttemptsLimit;
+  private final Duration passwordResetWindow;
 
   public AuthenticationThrottleService(
       @Value("${app.auth.login-attempt-limit:5}") int loginAttemptsLimit,
       @Value("${app.auth.login-window-seconds:900}") long loginWindowSeconds,
       @Value("${app.auth.registration-attempt-limit:3}") int registrationAttemptsLimit,
-      @Value("${app.auth.registration-window-seconds:3600}") long registrationWindowSeconds) {
+      @Value("${app.auth.registration-window-seconds:3600}") long registrationWindowSeconds,
+      @Value("${app.auth.password-reset-attempt-limit:3}") int passwordResetAttemptsLimit,
+      @Value("${app.auth.password-reset-window-seconds:3600}") long passwordResetWindowSeconds) {
     this.clock = Clock.systemUTC();
     this.loginAttemptsLimit = loginAttemptsLimit;
     this.loginWindow = Duration.ofSeconds(loginWindowSeconds);
     this.registrationAttemptsLimit = registrationAttemptsLimit;
     this.registrationWindow = Duration.ofSeconds(registrationWindowSeconds);
+    this.passwordResetAttemptsLimit = passwordResetAttemptsLimit;
+    this.passwordResetWindow = Duration.ofSeconds(passwordResetWindowSeconds);
   }
 
   public void checkLoginAttempt(String clientAddress, String email) {
@@ -53,6 +59,13 @@ public class AuthenticationThrottleService {
 
   public void resetRegistrationAttempt(String clientAddress) {
     attemptWindows.remove("registration-ip:" + clientAddress);
+  }
+
+  public void checkPasswordResetRequest(String clientAddress) {
+    check(
+        "password-reset-ip:" + clientAddress,
+        passwordResetAttemptsLimit,
+        passwordResetWindow);
   }
 
   @Scheduled(fixedDelayString = "${app.auth.cleanup-delay-ms:300000}")

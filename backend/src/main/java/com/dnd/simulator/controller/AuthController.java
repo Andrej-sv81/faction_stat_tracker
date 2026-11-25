@@ -4,6 +4,7 @@ import com.dnd.simulator.dto.AuthDtos;
 import com.dnd.simulator.exception.AuthenticationException;
 import com.dnd.simulator.service.AuthService;
 import com.dnd.simulator.service.AuthenticationThrottleService;
+import com.dnd.simulator.service.PasswordResetService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
   private static final String REFRESH_COOKIE = "refresh_token";
   private final AuthService service;
+  private final PasswordResetService passwordResetService;
   private final boolean cookieSecure;
   private final String cookieSameSite;
   private final long refreshExpirationMs;
@@ -27,11 +29,13 @@ public class AuthController {
 
   public AuthController(
       AuthService service,
+      PasswordResetService passwordResetService,
       AuthenticationThrottleService authenticationThrottle,
       @Value("${app.cookie-secure:false}") boolean cookieSecure,
       @Value("${app.cookie-same-site:Strict}") String cookieSameSite,
       @Value("${app.refresh-expiration-ms:1209600000}") long refreshExpirationMs) {
     this.service = service;
+    this.passwordResetService = passwordResetService;
     this.authenticationThrottle = authenticationThrottle;
     this.cookieSecure = cookieSecure;
     this.cookieSameSite = cookieSameSite;
@@ -79,6 +83,24 @@ public class AuthController {
     return new AuthDtos.CsrfResponse(
         csrfToken.getHeaderName(),
         csrfToken.getToken());
+  }
+
+  @PostMapping("/password-reset/request")
+  public ResponseEntity<Void> requestPasswordReset(
+      @Valid @RequestBody AuthDtos.PasswordResetRequest request,
+      HttpServletRequest httpRequest) {
+    authenticationThrottle.checkPasswordResetRequest(httpRequest.getRemoteAddr());
+    passwordResetService.requestReset(request.email());
+    return ResponseEntity.accepted().build();
+  }
+
+  @PostMapping("/password-reset/confirm")
+  public ResponseEntity<Void> confirmPasswordReset(
+      @Valid @RequestBody AuthDtos.PasswordResetConfirmation confirmation) {
+    passwordResetService.resetPassword(
+        confirmation.token(),
+        confirmation.newPassword());
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/refresh")
