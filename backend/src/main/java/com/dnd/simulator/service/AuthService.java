@@ -6,6 +6,8 @@ import com.dnd.simulator.exception.AuthenticationException;
 import com.dnd.simulator.exception.DuplicateResourceException;
 import com.dnd.simulator.repository.AppUserRepository;
 import com.dnd.simulator.security.JwtService;
+import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,20 +30,29 @@ public class AuthService {
   }
 
   public AuthResult register(AuthDtos.Credentials credentials) {
-    if (users.findByEmail(credentials.email()).isPresent())
+    String normalizedEmail =
+        credentials.email().trim().toLowerCase(Locale.ROOT);
+    if (users.findByEmail(normalizedEmail).isPresent())
       throw new DuplicateResourceException("Email already registered");
-    AppUser user =
-        users.save(
-            new AppUser(
-                credentials.email().toLowerCase(),
-                encoder.encode(credentials.password())));
+    AppUser user;
+    try {
+      user =
+          users.save(
+              new AppUser(
+                  normalizedEmail,
+                  encoder.encode(credentials.password())));
+    } catch (DataIntegrityViolationException exception) {
+      throw new DuplicateResourceException("Email already registered");
+    }
     return createResult(user);
   }
 
   public AuthResult login(AuthDtos.Credentials credentials) {
+    String normalizedEmail =
+        credentials.email().trim().toLowerCase(Locale.ROOT);
     AppUser user =
         users
-            .findByEmail(credentials.email().toLowerCase())
+            .findByEmail(normalizedEmail)
             .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
     if (!encoder.matches(credentials.password(), user.getPasswordHash()))
       throw new AuthenticationException("Invalid credentials");
