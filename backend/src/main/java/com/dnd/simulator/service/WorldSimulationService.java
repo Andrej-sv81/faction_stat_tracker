@@ -70,6 +70,7 @@ public class WorldSimulationService {
             delta,
             hasSecondTarget ? -5 : 0,
             "The world moved without a player hand.",
+            null,
             null);
     WorldEvent created = events.createForWorld(world, request);
     return Map.of(

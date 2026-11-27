@@ -79,6 +79,7 @@ public class WorldSnapshotService {
                 event.path("influenceDelta").asInt(),
                 event.path("territoryDelta").asInt(),
                 event.path("details").asText(""),
+                event.hasNonNull("severity") ? event.path("severity").asInt() : null,
                 null),
             ownerId);
       }

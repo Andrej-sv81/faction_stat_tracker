@@ -35,6 +35,18 @@ Example event request:
 }
 ```
 
+### Go world simulation runner
+
+The Go runner creates random events through the authenticated Java API, so faction changes and chronicle logs are persisted by the backend. It starts paused; use `play`, `pause`, `interval <minutes>`, and `severity <1-5>` in its console. Severity scales generated stat deltas; manually submitted event deltas remain exact. The interval and play state live in the runner process and reset when it exits.
+
+```powershell
+cd tools\world-simulation
+$env:FACTION_STAT_TRACKER_TOKEN = "<access-token>"
+go run . -world <world-id> -interval-minutes 5 -severity 3
+```
+
+The runner supports intervals from 1 to 1440 minutes and requires an access token with permission to read and update the selected world.
+
 ### Password reset
 
 Configure `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, and any required SMTP credentials in `.env.development` to deliver reset links. Reset requests return the same `202 Accepted` response whether or not the email is registered. The reset token expires after `PASSWORD_RESET_EXPIRATION_MS` (15 minutes by default), can only be used once, and successful password changes revoke the user's refresh-token sessions.

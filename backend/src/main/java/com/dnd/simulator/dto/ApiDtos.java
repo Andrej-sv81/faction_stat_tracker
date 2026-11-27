@@ -29,6 +29,7 @@ public final class ApiDtos {
       @Min(-100) @Max(100) int influenceDelta,
       @Min(-20) @Max(20) int territoryDelta,
       @Size(max = 2000) String details,
+      @Min(1) @Max(5) Integer severity,
       @PositiveOrZero Long version) {}
 
   public record EventTypeResponse(String code, String name, String domain, String description) {}

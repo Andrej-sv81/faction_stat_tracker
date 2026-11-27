@@ -39,6 +39,7 @@ class WorldEventServiceTest {
                   "title": "A pact is signed",
                   "type": "ALLIANCE",
                   "targetFactionId": "faction-1",
+                  "severity": 4,
                   "powerDelta": 0,
                   "wealthDelta": 5,
                   "manpowerDelta": 0,
@@ -49,6 +50,7 @@ class WorldEventServiceTest {
             ApiDtos.EventRequest.class);
 
     assertEquals("ALLIANCE", request.type());
+    assertEquals(4, request.severity());
   }
 
   @Test
@@ -67,6 +69,42 @@ class WorldEventServiceTest {
 
     assertEquals("ALLIANCE", json.path("type").asText());
     assertEquals("Politics, Diplomacy & Leadership", json.path("category").asText());
+  }
+
+  @Test
+  void storesTheRequestedSeverityOnCreatedEvents() {
+    WorldService worlds = mock(WorldService.class);
+    FactionRepository factions = mock(FactionRepository.class);
+    WorldEventRepository events = mock(WorldEventRepository.class);
+    EventTypeRepository eventTypes = mock(EventTypeRepository.class);
+    SimulationLogRepository logs = mock(SimulationLogRepository.class);
+    World world = mock(World.class);
+    EventType type =
+        new EventType("DISCOVERY", "Discovery", "Knowledge", "An artifact is found.");
+    when(world.getId()).thenReturn("world-1");
+    when(eventTypes.findByCodeAndEnabledTrue("DISCOVERY")).thenReturn(Optional.of(type));
+    when(factions.findByWorldId("world-1")).thenReturn(List.of());
+    when(events.save(any(WorldEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    WorldEventService service =
+        new WorldEventService(worlds, factions, events, eventTypes, logs);
+    ApiDtos.EventRequest request =
+        new ApiDtos.EventRequest(
+            "A discovery",
+            "DISCOVERY",
+            null,
+            null,
+            0,
+            0,
+            0,
+            0,
+            0,
+            "An artifact is found.",
+            4,
+            null);
+
+    WorldEvent created = service.createForWorld(world, request);
+
+    assertEquals(4, created.getSeverity());
   }
 
   @Test
@@ -117,6 +155,7 @@ class WorldEventServiceTest {
     assertEquals("Politics, Diplomacy & Leadership", savedEvent.getCategory());
     assertEquals("faction-1", savedEvent.getTargetFactionId());
     assertNull(savedEvent.getSecondTargetFactionId());
+    assertEquals(3, savedEvent.getSeverity());
   }
 
   @Test
@@ -142,6 +181,7 @@ class WorldEventServiceTest {
             0,
             0,
             "No catalog type exists.",
+            null,
             null);
 
     assertThrows(

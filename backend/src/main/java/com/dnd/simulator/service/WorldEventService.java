@@ -85,6 +85,9 @@ public class WorldEventService {
     event.setManpowerDelta(request.manpowerDelta());
     event.setInfluenceDelta(request.influenceDelta());
     event.setTerritoryDelta(request.territoryDelta());
+    if (request.severity() != null) {
+      event.setSeverity(request.severity());
+    }
     event.setSecondTargetFactionId(request.secondTargetFactionId());
     targets.forEach(
         target -> {
@@ -109,6 +112,9 @@ public class WorldEventService {
   }
 
   private void validateEventTargets(ApiDtos.EventRequest request) {
+    if (request.severity() != null && (request.severity() < 1 || request.severity() > 5)) {
+      throw new IllegalArgumentException("Event severity must be between 1 and 5");
+    }
     boolean hasPrimaryTarget =
         request.targetFactionId() != null && !request.targetFactionId().isBlank();
     boolean hasSecondTarget =

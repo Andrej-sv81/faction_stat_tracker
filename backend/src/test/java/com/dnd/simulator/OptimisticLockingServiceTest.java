@@ -80,6 +80,7 @@ class OptimisticLockingServiceTest {
             0,
             0,
             "A political pact.",
+            null,
             2L);
     WorldEventService service =
         new WorldEventService(worlds, factions, events, eventTypes, logs);

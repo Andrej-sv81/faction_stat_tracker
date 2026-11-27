@@ -43,6 +43,9 @@ public class WorldEvent {
   @Setter
   private String secondTargetFactionId;
   @Setter
+  @Column(nullable = false, columnDefinition = "integer default 3")
+  private int severity = 3;
+  @Setter
   private int powerDelta;
   @Setter
   private int wealthDelta;
