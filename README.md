@@ -16,7 +16,15 @@ Register an account, create a world, then run simulations. `GET /api/worlds/{id}
 
 Event types are stored in the `event_types` table and seeded from `backend/src/main/resources/faction_event_categories.csv` when the API starts. Existing catalog entries are not overwritten by startup seeding. `GET /api/event-types` returns the enabled types and their metadata. Event requests send only the stable `type` code; the event's category/domain is derived from that catalog entry. Targeting is inferred from faction IDs: no target IDs applies the event to every faction, one ID targets one faction, and two distinct IDs target both factions. Random simulation chooses an enabled catalog type, and imported events must reference an enabled type code.
 
+Generated random events use the selected type's impact profile instead of assigning a random sign to a random stat. For example, alliances improve manpower and influence, monetary gains increase wealth, and conflicts reduce manpower, wealth, and power. Ambiguous events such as migration can represent either an influx or an exodus. This applies to both the backend random-turn action and the Go runner; manually authored events continue to use their explicitly supplied deltas.
+
 Faction and event responses include a `version`. Include that value in faction and event `PUT` requests. Updates with a stale version return `409 Conflict`; reload the resource before retrying.
+
+### Dashboard periodic simulation
+
+The dashboard's periodic simulation controls start one scheduled random turn for the selected world. Choose an interval from 1 to 1440 minutes and a severity from 1 to 5; the first turn runs after the selected interval. The dashboard refreshes the world snapshot while the schedule is active so generated events appear in the chronicle. Stop the schedule from the same controls; a turn already in progress may still finish.
+
+Schedules run in the Java API process, are scoped to the authenticated owner and world, and are not persisted. They stop if the API restarts, and a multi-instance deployment runs schedules only in the instance that received the start request. Users can run schedules independently for worlds they own.
 
 Example event request:
 

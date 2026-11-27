@@ -5,6 +5,7 @@ import com.dnd.simulator.service.FactionService;
 import com.dnd.simulator.service.WorldEventService;
 import com.dnd.simulator.service.WorldService;
 import com.dnd.simulator.service.WorldSimulationService;
+import com.dnd.simulator.service.WorldSimulationScheduler;
 import com.dnd.simulator.service.WorldSnapshotService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,6 +34,7 @@ public class WorldController {
   private final FactionService factions;
   private final WorldEventService events;
   private final WorldSimulationService simulations;
+  private final WorldSimulationScheduler simulationScheduler;
   private final WorldSnapshotService snapshots;
   private final ObjectMapper mapper;
 
@@ -41,12 +43,14 @@ public class WorldController {
       FactionService factions,
       WorldEventService events,
       WorldSimulationService simulations,
+      WorldSimulationScheduler simulationScheduler,
       WorldSnapshotService snapshots,
       ObjectMapper mapper) {
     this.worlds = worlds;
     this.factions = factions;
     this.events = events;
     this.simulations = simulations;
+    this.simulationScheduler = simulationScheduler;
     this.snapshots = snapshots;
     this.mapper = mapper;
   }
@@ -135,6 +139,29 @@ public class WorldController {
       @PathVariable String id,
       Authentication authentication) {
     return ResponseEntity.ok(simulations.simulate(id, userId(authentication)));
+  }
+
+  @PostMapping("/{id}/simulation/start")
+  public ResponseEntity<ApiDtos.SimulationStatusResponse> startSimulation(
+      @PathVariable String id,
+      @Valid @RequestBody ApiDtos.SimulationControlRequest request,
+      Authentication authentication) {
+    return ResponseEntity.ok(
+        simulationScheduler.start(id, userId(authentication), request));
+  }
+
+  @PostMapping("/{id}/simulation/stop")
+  public ResponseEntity<ApiDtos.SimulationStatusResponse> stopSimulation(
+      @PathVariable String id,
+      Authentication authentication) {
+    return ResponseEntity.ok(simulationScheduler.stop(id, userId(authentication)));
+  }
+
+  @GetMapping("/{id}/simulation/status")
+  public ResponseEntity<ApiDtos.SimulationStatusResponse> simulationStatus(
+      @PathVariable String id,
+      Authentication authentication) {
+    return ResponseEntity.ok(simulationScheduler.status(id, userId(authentication)));
   }
 
   @PostMapping("/import")

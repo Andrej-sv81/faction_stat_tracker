@@ -33,4 +33,14 @@ public final class ApiDtos {
       @PositiveOrZero Long version) {}
 
   public record EventTypeResponse(String code, String name, String domain, String description) {}
+
+  public record SimulationControlRequest(
+      @Min(1) @Max(1440) int intervalMinutes,
+      @Min(1) @Max(5) int severity) {}
+
+  public record SimulationStatusResponse(
+      boolean running,
+      int intervalMinutes,
+      int severity,
+      String lastError) {}
 }

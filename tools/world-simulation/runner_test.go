@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestGenerateRandomEventUsesSeverityAndCatalogValues(t *testing.T) {
+func TestGenerateRandomEventUsesEventSpecificEffectsAndSeverity(t *testing.T) {
 	random := rand.New(rand.NewSource(17))
 	factions := []Faction{{ID: "faction-1", Name: "Ember Hold"}}
 	eventTypes := []EventType{{
@@ -37,32 +37,84 @@ func TestGenerateRandomEventUsesSeverityAndCatalogValues(t *testing.T) {
 		t.Fatalf("event should name its faction: %+v", event)
 	}
 
-	deltas := []int{
-		event.PowerDelta,
-		event.WealthDelta,
-		event.ManpowerDelta,
-		event.InfluenceDelta,
-		event.TerritoryDelta,
+	if event.PowerDelta != 0 || event.WealthDelta != 0 || event.ManpowerDelta != 0 {
+		t.Fatalf("discovery should not damage unrelated stats: %+v", event)
 	}
-	nonZero := 0
-	for index, delta := range deltas {
-		if delta == 0 {
-			continue
-		}
-		nonZero++
+	if event.InfluenceDelta <= 0 || event.TerritoryDelta <= 0 {
+		t.Fatalf("discovery should improve influence and territory: %+v", event)
+	}
+	for _, delta := range []int{event.InfluenceDelta, event.TerritoryDelta} {
 		magnitude := delta
 		if magnitude < 0 {
 			magnitude = -magnitude
 		}
 		if magnitude < 8 || magnitude > 16 {
-			t.Fatalf("delta %d out of severity 4 range: %d", index, delta)
-		}
-		if index == 4 && magnitude > 20 {
-			t.Fatalf("territory delta exceeds API bound: %d", delta)
+			t.Fatalf("delta out of severity 4 range: %d", delta)
 		}
 	}
-	if nonZero != 1 {
-		t.Fatalf("got %d non-zero deltas, want exactly one", nonZero)
+	if event.TerritoryDelta > 20 {
+		t.Fatalf("territory delta exceeds API bound: %d", event.TerritoryDelta)
+	}
+}
+
+func TestGenerateRandomEventUsesLogicalEffectsForCatalogTypes(t *testing.T) {
+	tests := []struct {
+		name        string
+		code        string
+		domain      string
+		checkDeltas func(*testing.T, EventRequest)
+	}{
+		{
+			name:   "alliance strengthens manpower and influence",
+			code:   "ALLIANCE",
+			domain: "Politics, Diplomacy & Leadership",
+			checkDeltas: func(t *testing.T, event EventRequest) {
+				if event.ManpowerDelta <= 0 || event.InfluenceDelta <= 0 || event.WealthDelta != 0 {
+					t.Fatalf("unexpected alliance deltas: %+v", event)
+				}
+			},
+		},
+		{
+			name:   "monetary gain increases wealth",
+			code:   "MONETARY_GAIN",
+			domain: "Economy & Resources",
+			checkDeltas: func(t *testing.T, event EventRequest) {
+				if event.WealthDelta <= 0 || event.ManpowerDelta != 0 {
+					t.Fatalf("unexpected monetary-gain deltas: %+v", event)
+				}
+			},
+		},
+		{
+			name:   "conflict costs manpower and wealth",
+			code:   "CONFLICT",
+			domain: "Warfare & Security",
+			checkDeltas: func(t *testing.T, event EventRequest) {
+				if event.ManpowerDelta >= 0 || event.WealthDelta >= 0 {
+					t.Fatalf("unexpected conflict deltas: %+v", event)
+				}
+			},
+		},
+		{
+			name:   "unknown types use their domain profile",
+			code:   "NEW_WAR_EVENT",
+			domain: "Warfare & Security",
+			checkDeltas: func(t *testing.T, event EventRequest) {
+				if event.ManpowerDelta >= 0 || event.WealthDelta >= 0 {
+					t.Fatalf("unexpected fallback deltas: %+v", event)
+				}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			event := generateRandomEvent(
+				rand.New(rand.NewSource(21)),
+				3,
+				[]Faction{{ID: "faction-1", Name: "Ember Hold"}},
+				[]EventType{{Code: test.code, Domain: test.domain}},
+			)
+			test.checkDeltas(t, event)
+		})
 	}
 }
 
@@ -120,6 +172,9 @@ func TestAPIClientCreatesAuthenticatedSeverityEventWithCSRF(t *testing.T) {
 	}
 	if posted.Severity != 4 {
 		t.Fatalf("severity = %d, want 4", posted.Severity)
+	}
+	if posted.InfluenceDelta <= 0 || posted.TerritoryDelta <= 0 {
+		t.Fatalf("discovery should improve influence and territory: %+v", posted)
 	}
 }
 

@@ -1,5 +1,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ApiError, Faction, SimulationLog, WorldEvent, WorldSnapshot } from './api';
+import {
+  api,
+  ApiError,
+  Faction,
+  SimulationLog,
+  SimulationStatus,
+  WorldEvent,
+  WorldSnapshot,
+} from './api';
 import { loadPreferences } from './preferences';
 
 interface DashboardProps {
@@ -277,6 +285,11 @@ export default function Dashboard({ token }: DashboardProps) {
   const [loadingWorlds, setLoadingWorlds] = useState(true);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [simulationStatus, setSimulationStatus] = useState<SimulationStatus | null>(null);
+  const [simulationStatusLoading, setSimulationStatusLoading] = useState(false);
+  const [simulationBusy, setSimulationBusy] = useState(false);
+  const [intervalMinutes, setIntervalMinutes] = useState('5');
+  const [severity, setSeverity] = useState('3');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -331,6 +344,56 @@ export default function Dashboard({ token }: DashboardProps) {
   useEffect(() => {
     void loadSnapshot();
   }, [loadSnapshot]);
+
+  useEffect(() => {
+    let active = true;
+    setSimulationStatus(null);
+    if (!worldId) {
+      setSimulationStatusLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSimulationStatusLoading(true);
+    api
+      .simulationStatus(worldId, token)
+      .then((status) => {
+        if (!active) return;
+        setSimulationStatus(status);
+        setIntervalMinutes(String(status.intervalMinutes));
+        setSeverity(String(status.severity));
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          setError(
+            reason instanceof Error ? reason.message : 'Could not load simulation status.',
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setSimulationStatusLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token, worldId]);
+
+  useEffect(() => {
+    if (!worldId || !simulationStatus?.running) return;
+    const timer = window.setInterval(() => {
+      void api
+        .getWorld(worldId, token)
+        .then(setSnapshot)
+        .catch((reason: unknown) => {
+          setError(
+            reason instanceof Error ? reason.message : 'Could not refresh the world chronicle.',
+          );
+        });
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [simulationStatus?.running, token, worldId]);
 
   const chronicle = useMemo(
     () => (snapshot ? makeChronicle(snapshot) : []),
@@ -415,6 +478,51 @@ export default function Dashboard({ token }: DashboardProps) {
     }
   }
 
+  async function startPeriodicSimulation() {
+    if (!worldId) return;
+    const interval = Number(intervalMinutes);
+    const impact = Number(severity);
+    if (!Number.isInteger(interval) || interval < 1 || interval > 1440) {
+      setError('Choose an interval from 1 to 1440 minutes.');
+      return;
+    }
+    if (!Number.isInteger(impact) || impact < 1 || impact > 5) {
+      setError('Choose a severity from 1 to 5.');
+      return;
+    }
+
+    setSimulationBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const status = await api.startSimulation(worldId, interval, impact, token);
+      setSimulationStatus(status);
+      setIntervalMinutes(String(status.intervalMinutes));
+      setSeverity(String(status.severity));
+      setNotice(`Periodic simulation started. The first turn runs in ${status.intervalMinutes} minute${status.intervalMinutes === 1 ? '' : 's'}.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not start periodic simulation.');
+    } finally {
+      setSimulationBusy(false);
+    }
+  }
+
+  async function stopPeriodicSimulation() {
+    if (!worldId) return;
+    setSimulationBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const status = await api.stopSimulation(worldId, token);
+      setSimulationStatus(status);
+      setNotice('Periodic simulation stopped. A turn already in progress may still finish.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not stop periodic simulation.');
+    } finally {
+      setSimulationBusy(false);
+    }
+  }
+
   const factionEvents = selectedFaction && snapshot
     ? snapshot.events.filter(
         (event) =>
@@ -475,6 +583,90 @@ export default function Dashboard({ token }: DashboardProps) {
           >
             + Add faction
           </button>
+        </div>
+      </section>
+
+      <section
+        aria-label="Periodic simulation controls"
+        className={`${panelClass} flex flex-none flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5`}
+      >
+        <div className="min-w-44">
+          <div className="flex items-center gap-2">
+            <p className="font-serif text-sm text-violet-100">Periodic simulation</p>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                simulationStatus?.running
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  : 'border-slate-700 bg-slate-950/60 text-slate-400'
+              }`}
+              role="status"
+            >
+              {simulationStatusLoading ? 'Checking' : simulationStatus?.running ? 'Running' : 'Stopped'}
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {simulationStatus?.lastError ?? (
+              snapshot?.factions.length
+                ? 'Events appear in the chronicle automatically.'
+                : 'Add a faction before starting event generation.'
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-[11px] text-slate-400">
+            Every
+            <input
+              aria-label="Simulation interval in minutes"
+              className="ml-1 w-16 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-violet-400 disabled:opacity-50"
+              disabled={simulationBusy || simulationStatus?.running}
+              max={1440}
+              min={1}
+              onChange={(event) => setIntervalMinutes(event.target.value)}
+              type="number"
+              value={intervalMinutes}
+            />
+            <span className="ml-1">min</span>
+          </label>
+          <label className="text-[11px] text-slate-400">
+            Severity
+            <select
+              aria-label="Simulation severity"
+              className="ml-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-violet-400 disabled:opacity-50"
+              disabled={simulationBusy || simulationStatus?.running}
+              onChange={(event) => setSeverity(event.target.value)}
+              value={severity}
+            >
+              {[1, 2, 3, 4, 5].map((level) => (
+                <option className="bg-slate-900" key={level} value={level}>
+                  {level}
+                </option>
+              ))}
+            </select>
+          </label>
+          {simulationStatus?.running ? (
+            <button
+              className="rounded-lg border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:opacity-50"
+              disabled={simulationBusy || simulationStatusLoading}
+              onClick={() => void stopPeriodicSimulation()}
+              type="button"
+            >
+              {simulationBusy ? 'Stopping…' : 'Stop'}
+            </button>
+          ) : (
+            <button
+              className="rounded-lg border border-violet-400/30 bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                simulationBusy ||
+                simulationStatusLoading ||
+                !worldId ||
+                (snapshot?.factions.length ?? 0) === 0
+              }
+              onClick={() => void startPeriodicSimulation()}
+              type="button"
+            >
+              {simulationBusy ? 'Starting…' : 'Start'}
+            </button>
+          )}
         </div>
       </section>
 

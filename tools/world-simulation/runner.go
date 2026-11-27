@@ -78,6 +78,55 @@ type EventRequest struct {
 	Severity            int     `json:"severity"`
 }
 
+type statDeltas struct {
+	power     int
+	wealth    int
+	manpower  int
+	influence int
+	territory int
+}
+
+type impactProfile struct {
+	power     int
+	wealth    int
+	manpower  int
+	influence int
+	territory int
+}
+
+var eventImpactProfiles = map[string]impactProfile{
+	"CHANGE_OF_LEADERSHIP":   {power: -1, influence: -1},
+	"ALLIANCE":               {manpower: 1, influence: 1},
+	"BETRAYAL":               {power: -1, influence: -1},
+	"DIPLOMATIC_INCIDENT":    {wealth: -1, influence: -1},
+	"ANNEXATION":             {wealth: -1, manpower: 1, territory: 1},
+	"SCHISM":                 {manpower: -1, influence: -1},
+	"REBELLION":              {power: -1, wealth: -1, manpower: -1},
+	"CONFLICT":               {power: -1, wealth: -1, manpower: -1},
+	"ESPIONAGE":              {power: 1, wealth: -1, influence: 1},
+	"FORTIFICATION":          {power: 1, wealth: -1},
+	"PIRACY_OR_BANDITRY":     {wealth: -1, manpower: -1},
+	"MERCENARY_ACTION":       {power: 1, wealth: -1, manpower: 1},
+	"MONETARY_GAIN":          {wealth: 1},
+	"FINANCIAL_CRISIS":       {wealth: -1, influence: -1},
+	"CONTRACT":               {wealth: 1, influence: 1},
+	"RESOURCE_BOOM":          {wealth: 1, manpower: 1},
+	"SCARCITY":               {wealth: -1, manpower: -1},
+	"INFRASTRUCTURE_PROJECT": {power: 1, wealth: -1, territory: 1},
+	"DISCOVERY":              {influence: 1, territory: 1},
+	"ARCANE_ANOMALY":         {power: -1, territory: -1},
+	"INNOVATION":             {power: 1, wealth: 1},
+	"HERESY_OR_PROPHECY":     {power: -1, influence: 1},
+	"NATURAL_DISASTER":       {wealth: -1, manpower: -1, territory: -1},
+	"PLAGUE":                 {wealth: -1, manpower: -1},
+	"MIGRATION":              {wealth: 1, manpower: 1},
+	"CULTURAL_RENAISSANCE":   {wealth: 1, influence: 1},
+	"CRIME_WAVE":             {wealth: -1, influence: -1},
+	"MONSTER_INCURSION":      {power: -1, manpower: -1, territory: -1},
+	"DIVINE_INTERVENTION":    {power: 1, influence: 1},
+	"RELIC_AWAKENING":        {power: 1, wealth: -1, influence: 1},
+}
+
 type inputLine struct {
 	value string
 	err   error
@@ -221,13 +270,11 @@ func generateRandomEvent(
 		targets = append(targets, factions[(indexOfFaction(factions, first)+offset)%len(factions)])
 	}
 
-	stat := []string{"power", "wealth", "manpower", "influence", "territory"}[random.Intn(5)]
+	profile := impactProfileFor(eventType, random)
 	maximumDelta := severity * 4
 	minimumDelta := severity * 2
-	delta := minimumDelta + random.Intn(maximumDelta-minimumDelta+1)
-	if random.Intn(2) == 0 {
-		delta *= -1
-	}
+	magnitude := minimumDelta + random.Intn(maximumDelta-minimumDelta+1)
+	deltas := profile.scale(magnitude)
 
 	names := make([]string, len(targets))
 	for index, faction := range targets {
@@ -239,27 +286,67 @@ func generateRandomEvent(
 		Title:           title,
 		Type:            eventType.Code,
 		TargetFactionID: targetFactionID,
-		Details:         narrative(eventType, targets, stat, delta),
+		Details:         narrative(eventType, targets, deltas),
 		Severity:        severity,
+		PowerDelta:      deltas.power,
+		WealthDelta:     deltas.wealth,
+		ManpowerDelta:   deltas.manpower,
+		InfluenceDelta:  deltas.influence,
+		TerritoryDelta:  deltas.territory,
 	}
 	if len(targets) == 2 {
 		secondID := targets[1].ID
 		request.SecondTargetFaction = &secondID
 	}
-
-	switch stat {
-	case "power":
-		request.PowerDelta = delta
-	case "wealth":
-		request.WealthDelta = delta
-	case "manpower":
-		request.ManpowerDelta = delta
-	case "influence":
-		request.InfluenceDelta = delta
-	case "territory":
-		request.TerritoryDelta = delta
-	}
 	return request
+}
+
+func impactProfileFor(eventType EventType, random *rand.Rand) impactProfile {
+	code := strings.ToUpper(strings.TrimSpace(eventType.Code))
+	if profile, exists := eventImpactProfiles[code]; exists {
+		if code == "MIGRATION" || code == "DIVINE_INTERVENTION" {
+			direction := 1
+			if random.Intn(2) == 0 {
+				direction = -1
+			}
+			return profile.multiply(direction)
+		}
+		return profile
+	}
+
+	domain := strings.ToLower(eventType.Domain)
+	switch {
+	case strings.Contains(domain, "warfare"), strings.Contains(domain, "threat"):
+		return impactProfile{wealth: -1, manpower: -1}
+	case strings.Contains(domain, "economy"):
+		return impactProfile{wealth: 1}
+	case strings.Contains(domain, "environment"):
+		return impactProfile{wealth: -1, manpower: -1}
+	case strings.Contains(domain, "knowledge"):
+		return impactProfile{power: 1, influence: 1}
+	default:
+		return impactProfile{influence: 1}
+	}
+}
+
+func (profile impactProfile) scale(magnitude int) statDeltas {
+	return statDeltas{
+		power:     profile.power * magnitude,
+		wealth:    profile.wealth * magnitude,
+		manpower:  profile.manpower * magnitude,
+		influence: profile.influence * magnitude,
+		territory: profile.territory * magnitude,
+	}
+}
+
+func (profile impactProfile) multiply(factor int) impactProfile {
+	return impactProfile{
+		power:     profile.power * factor,
+		wealth:    profile.wealth * factor,
+		manpower:  profile.manpower * factor,
+		influence: profile.influence * factor,
+		territory: profile.territory * factor,
+	}
 }
 
 func indexOfFaction(factions []Faction, target Faction) int {
@@ -271,17 +358,36 @@ func indexOfFaction(factions []Faction, target Faction) int {
 	return 0
 }
 
-func narrative(eventType EventType, factions []Faction, stat string, delta int) string {
-	var impact string
-	if len(factions) == 1 {
-		impact = fmt.Sprintf("%s changes by %+d.", stat, delta)
-	} else {
-		impact = fmt.Sprintf("Both factions' %s change by %+d.", stat, delta)
+func narrative(eventType EventType, factions []Faction, deltas statDeltas) string {
+	impacts := make([]string, 0, 5)
+	for _, stat := range []struct {
+		name  string
+		value int
+	}{
+		{name: "Power", value: deltas.power},
+		{name: "Wealth", value: deltas.wealth},
+		{name: "Manpower", value: deltas.manpower},
+		{name: "Influence", value: deltas.influence},
+		{name: "Territory", value: deltas.territory},
+	} {
+		if stat.value == 0 {
+			continue
+		}
+		suffix := ""
+		if stat.name == "Territory" {
+			suffix = "%"
+		}
+		impacts = append(impacts, fmt.Sprintf("%s %+d%s", stat.name, stat.value, suffix))
 	}
+	impact := strings.Join(impacts, ", ")
+	if len(factions) == 2 {
+		impact = "Both factions: " + impact
+	}
+	description := strings.TrimSpace(strings.TrimSuffix(eventType.Description, "."))
 	if eventType.Description == "" {
-		return fmt.Sprintf("%s: %s", eventType.Name, impact)
+		description = eventType.Name
 	}
-	return fmt.Sprintf("%s %s", eventType.Description, impact)
+	return fmt.Sprintf("%s. Effects: %s.", description, impact)
 }
 
 func truncateRunes(value string, limit int) string {

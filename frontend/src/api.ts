@@ -56,6 +56,13 @@ export interface WorldSnapshot {
   logs: SimulationLog[];
 }
 
+export interface SimulationStatus {
+  running: boolean;
+  intervalMinutes: number;
+  severity: number;
+  lastError: string | null;
+}
+
 interface CsrfResponse {
   headerName: string;
   token: string;
@@ -198,4 +205,28 @@ export const api = {
       method: 'POST',
       token,
     }),
+  simulationStatus: (worldId: string, token: string) =>
+    request<SimulationStatus>(
+      `/api/worlds/${encodeURIComponent(worldId)}/simulation/status`,
+      { token },
+    ),
+  startSimulation: (
+    worldId: string,
+    intervalMinutes: number,
+    severity: number,
+    token: string,
+  ) =>
+    request<SimulationStatus>(
+      `/api/worlds/${encodeURIComponent(worldId)}/simulation/start`,
+      {
+        method: 'POST',
+        body: { intervalMinutes, severity },
+        token,
+      },
+    ),
+  stopSimulation: (worldId: string, token: string) =>
+    request<SimulationStatus>(
+      `/api/worlds/${encodeURIComponent(worldId)}/simulation/stop`,
+      { method: 'POST', token },
+    ),
 };

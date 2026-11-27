@@ -69,6 +69,44 @@ describe('frontend API client', () => {
     });
   });
 
+  it('loads periodic simulation status and sends CSRF-protected start and stop requests', async () => {
+    const status = {
+      running: true,
+      intervalMinutes: 5,
+      severity: 3,
+      lastError: null,
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(status))
+      .mockResolvedValueOnce(csrfResponse())
+      .mockResolvedValueOnce(jsonResponse(status))
+      .mockResolvedValueOnce(csrfResponse())
+      .mockResolvedValueOnce(jsonResponse({ ...status, running: false }));
+
+    await expect(api.simulationStatus('world/1', 'access-value')).resolves.toEqual(status);
+    await api.startSimulation('world/1', 5, 3, 'access-value');
+    await api.stopSimulation('world/1', 'access-value');
+
+    const [statusUrl, statusOptions] = fetchMock.mock.calls[0];
+    expect(String(statusUrl)).toBe('http://localhost:8080/api/worlds/world%2F1/simulation/status');
+    expect(statusOptions?.method).toBeUndefined();
+    expect(new Headers(statusOptions?.headers).get('Authorization')).toBe('Bearer access-value');
+
+    const [startUrl, startOptions] = fetchMock.mock.calls[2];
+    expect(String(startUrl)).toBe('http://localhost:8080/api/worlds/world%2F1/simulation/start');
+    expect(startOptions?.method).toBe('POST');
+    expect(JSON.parse(String(startOptions?.body))).toEqual({
+      intervalMinutes: 5,
+      severity: 3,
+    });
+    expect(new Headers(startOptions?.headers).get('X-XSRF-TOKEN')).toBe('csrf-value');
+
+    const [stopUrl, stopOptions] = fetchMock.mock.calls[4];
+    expect(String(stopUrl)).toBe('http://localhost:8080/api/worlds/world%2F1/simulation/stop');
+    expect(stopOptions?.method).toBe('POST');
+    expect(new Headers(stopOptions?.headers).get('X-XSRF-TOKEN')).toBe('csrf-value');
+  });
+
   it('accepts the bodyless 202 response from a password recovery request', async () => {
     fetchMock
       .mockResolvedValueOnce(csrfResponse())

@@ -3,6 +3,7 @@ package com.dnd.simulator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -156,6 +157,9 @@ class WorldEventServiceTest {
     assertEquals("faction-1", savedEvent.getTargetFactionId());
     assertNull(savedEvent.getSecondTargetFactionId());
     assertEquals(3, savedEvent.getSeverity());
+    assertTrue(savedEvent.getManpowerDelta() > 0);
+    assertTrue(savedEvent.getInfluenceDelta() > 0);
+    assertEquals(0, savedEvent.getWealthDelta());
   }
 
   @Test
