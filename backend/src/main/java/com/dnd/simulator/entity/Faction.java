@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,6 +19,10 @@ public class Faction {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private String id;
+
+  @Version
+  @Column(nullable = false, columnDefinition = "bigint default 0")
+  private Long version;
 
   @Column(nullable = false)
   @Setter

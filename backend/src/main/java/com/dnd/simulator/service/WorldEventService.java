@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -189,6 +190,12 @@ public class WorldEventService {
         events
             .findByIdAndWorldId(eventId, worldId)
             .orElseThrow(() -> new NoSuchElementException("Event not found"));
+    if (request.version() == null) {
+      throw new IllegalArgumentException("A version is required to update an event");
+    }
+    if (!request.version().equals(old.getVersion())) {
+      throw new ObjectOptimisticLockingFailureException(WorldEvent.class, eventId);
+    }
     priorTargets(old, worldId)
         .forEach(
             target -> {

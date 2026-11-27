@@ -51,7 +51,8 @@ public class WorldSnapshotService {
                 faction.path("influence").asInt(50),
                 faction.path("territory").asInt(1),
                 faction.path("imageUrl").asText(null),
-                faction.path("description").asText("")),
+                faction.path("description").asText(""),
+                null),
             ownerId);
       }
     }
@@ -77,7 +78,8 @@ public class WorldSnapshotService {
                 event.path("manpowerDelta").asInt(),
                 event.path("influenceDelta").asInt(),
                 event.path("territoryDelta").asInt(),
-                event.path("details").asText("")),
+                event.path("details").asText(""),
+                null),
             ownerId);
       }
     }

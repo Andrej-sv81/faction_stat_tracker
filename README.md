@@ -16,6 +16,8 @@ Register an account, create a world, then run simulations. `GET /api/worlds/{id}
 
 Event types are stored in the `event_types` table and seeded from `backend/src/main/resources/faction_event_categories.csv` when the API starts. Existing catalog entries are not overwritten by startup seeding. `GET /api/event-types` returns the enabled types and their metadata. Event requests send only the stable `type` code; the event's category/domain is derived from that catalog entry. Targeting is inferred from faction IDs: no target IDs applies the event to every faction, one ID targets one faction, and two distinct IDs target both factions. Random simulation chooses an enabled catalog type, and imported events must reference an enabled type code.
 
+Faction and event responses include a `version`. Include that value in faction and event `PUT` requests. Updates with a stale version return `409 Conflict`; reload the resource before retrying.
+
 Example event request:
 
 ```json

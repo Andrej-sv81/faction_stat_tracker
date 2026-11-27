@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,10 @@ public class WorldEvent {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private String id;
+
+  @Version
+  @Column(nullable = false, columnDefinition = "bigint default 0")
+  private Long version;
 
   @Column(nullable = false)
   @Setter

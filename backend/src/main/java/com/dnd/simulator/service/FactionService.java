@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @Service
 public class FactionService {
@@ -37,6 +38,12 @@ public class FactionService {
         factions
             .findByIdAndWorldId(factionId, worldId)
             .orElseThrow(() -> new NoSuchElementException("Faction not found"));
+    if (request.version() == null) {
+      throw new IllegalArgumentException("A version is required to update a faction");
+    }
+    if (!request.version().equals(faction.getVersion())) {
+      throw new ObjectOptimisticLockingFailureException(Faction.class, factionId);
+    }
     return factions.save(fill(faction, request));
   }
 

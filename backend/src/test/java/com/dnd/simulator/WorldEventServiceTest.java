@@ -141,7 +141,8 @@ class WorldEventServiceTest {
             0,
             0,
             0,
-            "No catalog type exists.");
+            "No catalog type exists.",
+            null);
 
     assertThrows(
         IllegalArgumentException.class,

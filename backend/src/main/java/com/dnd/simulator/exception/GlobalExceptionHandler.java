@@ -1,6 +1,8 @@
 package com.dnd.simulator.exception;
 
 import java.util.*;
+import jakarta.persistence.OptimisticLockException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,13 @@ public class GlobalExceptionHandler {
   ResponseEntity<?> conflict(DuplicateResourceException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(
+      {OptimisticLockingFailureException.class, OptimisticLockException.class})
+  ResponseEntity<?> optimisticConflict(RuntimeException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "This resource changed in another request. Reload and retry."));
   }
 
   @ExceptionHandler(TooManyRequestsException.class)
