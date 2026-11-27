@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.dnd.simulator.service.PasswordResetEmailRequested;
+import com.dnd.simulator.dto.PasswordResetEmailRequested;
 import com.dnd.simulator.service.PasswordResetEmailService;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.SimpleMailMessage;

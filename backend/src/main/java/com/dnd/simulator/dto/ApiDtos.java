@@ -19,8 +19,7 @@ public final class ApiDtos {
 
   public record EventRequest(
       @NotBlank @Size(max = 120) String title,
-      @NotBlank String type,
-      @NotBlank String category,
+      @NotBlank @Size(max = 64) String type,
       String targetFactionId,
       String secondTargetFactionId,
       @Min(-100) @Max(100) int powerDelta,
@@ -29,4 +28,6 @@ public final class ApiDtos {
       @Min(-100) @Max(100) int influenceDelta,
       @Min(-20) @Max(20) int territoryDelta,
       @Size(max = 2000) String details) {}
+
+  public record EventTypeResponse(String code, String name, String domain, String description) {}
 }

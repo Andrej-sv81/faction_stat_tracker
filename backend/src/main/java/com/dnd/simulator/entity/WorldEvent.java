@@ -1,11 +1,13 @@
 package com.dnd.simulator.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -27,9 +29,10 @@ public class WorldEvent {
   private String title;
 
   @Setter
-  private String type;
-  @Setter
-  private String category;
+  @ManyToOne(optional = false)
+  @JoinColumn(name = "event_type_code", nullable = false)
+  private EventType type;
+
   @Setter
   private String targetFactionId;
   @Setter
@@ -55,13 +58,22 @@ public class WorldEvent {
   @Setter
   private World world;
 
-  public WorldEvent(String title, String type, String category, String targetFactionId, String details, World world) {
+  public WorldEvent(
+      String title,
+      EventType type,
+      String targetFactionId,
+      String details,
+      World world) {
     this.title = title;
     this.type = type;
-    this.category = category;
     this.targetFactionId = targetFactionId;
     this.details = details;
     this.world = world;
+  }
+
+  @JsonProperty("category")
+  public String getCategory() {
+    return type == null ? null : type.getDomain();
   }
 
   @JsonIgnore

@@ -1,5 +1,6 @@
 package com.dnd.simulator.service;
 
+import com.dnd.simulator.dto.PasswordResetEmailRequested;
 import com.dnd.simulator.entity.AppUser;
 import com.dnd.simulator.entity.PasswordResetToken;
 import com.dnd.simulator.repository.AppUserRepository;

@@ -11,11 +11,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.dnd.simulator.dto.PasswordResetEmailRequested;
 import com.dnd.simulator.entity.AppUser;
 import com.dnd.simulator.entity.PasswordResetToken;
 import com.dnd.simulator.repository.AppUserRepository;
 import com.dnd.simulator.repository.PasswordResetTokenRepository;
-import com.dnd.simulator.service.PasswordResetEmailRequested;
 import com.dnd.simulator.service.PasswordResetService;
 import com.dnd.simulator.service.RefreshTokenService;
 import java.time.Instant;

@@ -1,5 +1,7 @@
 package com.dnd.simulator.service;
 
+import com.dnd.simulator.dto.PasswordResetEmailRequested;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
@@ -9,7 +11,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @Service
 public class PasswordResetEmailService {
   private static final Logger logger =
@@ -23,7 +27,7 @@ public class PasswordResetEmailService {
 
   @Async
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void sendPasswordResetEmail(PasswordResetEmailRequested request) {
+  public void sendPasswordResetEmail(@Valid PasswordResetEmailRequested request) {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(request.fromAddress());
     message.setTo(request.email());

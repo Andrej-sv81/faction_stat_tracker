@@ -12,6 +12,27 @@ The UI is at http://localhost:5173 and the API at http://localhost:8080. Docker 
 
 Register an account, create a world, then run simulations. `GET /api/worlds/{id}/export` provides a JSON snapshot suitable for backups/import pipelines. The API validates request payloads and returns consistent JSON errors.
 
+### World event types
+
+Event types are stored in the `event_types` table and seeded from `backend/src/main/resources/faction_event_categories.csv` when the API starts. Existing catalog entries are not overwritten by startup seeding. `GET /api/event-types` returns the enabled types and their metadata. Event requests send only the stable `type` code; the event's category/domain is derived from that catalog entry. Targeting is inferred from faction IDs: no target IDs applies the event to every faction, one ID targets one faction, and two distinct IDs target both factions. Random simulation chooses an enabled catalog type, and imported events must reference an enabled type code.
+
+Example event request:
+
+```json
+{
+  "title": "A pact is signed",
+  "type": "ALLIANCE",
+  "targetFactionId": "faction-id",
+  "secondTargetFactionId": null,
+  "powerDelta": 0,
+  "wealthDelta": 5,
+  "manpowerDelta": 0,
+  "influenceDelta": 3,
+  "territoryDelta": 0,
+  "details": "The factions agree to mutual defense."
+}
+```
+
 ### Password reset
 
 Configure `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, and any required SMTP credentials in `.env.development` to deliver reset links. Reset requests return the same `202 Accepted` response whether or not the email is registered. The reset token expires after `PASSWORD_RESET_EXPIRATION_MS` (15 minutes by default), can only be used once, and successful password changes revoke the user's refresh-token sessions.
