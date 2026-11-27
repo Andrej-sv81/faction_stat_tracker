@@ -1,0 +1,156 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestGenerateRandomEventUsesSeverityAndCatalogValues(t *testing.T) {
+	random := rand.New(rand.NewSource(17))
+	factions := []Faction{{ID: "faction-1", Name: "Ember Hold"}}
+	eventTypes := []EventType{{
+		Code:        "DISCOVERY",
+		Name:        "Discovery",
+		Description: "A hidden artifact is uncovered.",
+	}}
+
+	event := generateRandomEvent(random, 4, factions, eventTypes)
+
+	if event.Type != "DISCOVERY" {
+		t.Fatalf("event type = %q, want DISCOVERY", event.Type)
+	}
+	if event.TargetFactionID != "faction-1" || event.SecondTargetFaction != nil {
+		t.Fatalf("unexpected targets: %+v", event)
+	}
+	if event.Severity != 4 {
+		t.Fatalf("severity = %d, want 4", event.Severity)
+	}
+	if !strings.Contains(event.Details, "Ember Hold") &&
+		!strings.Contains(event.Title, "Ember Hold") {
+		t.Fatalf("event should name its faction: %+v", event)
+	}
+
+	deltas := []int{
+		event.PowerDelta,
+		event.WealthDelta,
+		event.ManpowerDelta,
+		event.InfluenceDelta,
+		event.TerritoryDelta,
+	}
+	nonZero := 0
+	for index, delta := range deltas {
+		if delta == 0 {
+			continue
+		}
+		nonZero++
+		magnitude := delta
+		if magnitude < 0 {
+			magnitude = -magnitude
+		}
+		if magnitude < 8 || magnitude > 16 {
+			t.Fatalf("delta %d out of severity 4 range: %d", index, delta)
+		}
+		if index == 4 && magnitude > 20 {
+			t.Fatalf("territory delta exceeds API bound: %d", delta)
+		}
+	}
+	if nonZero != 1 {
+		t.Fatalf("got %d non-zero deltas, want exactly one", nonZero)
+	}
+}
+
+func TestAPIClientCreatesAuthenticatedSeverityEventWithCSRF(t *testing.T) {
+	var posted EventRequest
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/api/auth/csrf":
+			http.SetCookie(writer, &http.Cookie{Name: "XSRF-TOKEN", Value: "csrf-123", Path: "/"})
+			_, _ = writer.Write([]byte(`{"headerName":"X-XSRF-TOKEN","token":"csrf-123"}`))
+		case "/api/worlds/world-1":
+			if request.Header.Get("Authorization") != "Bearer access-token" {
+				t.Errorf("missing bearer token: %q", request.Header.Get("Authorization"))
+			}
+			_, _ = writer.Write([]byte(`{"factions":[{"id":"faction-1","name":"Ember Hold"}]}`))
+		case "/api/event-types":
+			_, _ = writer.Write([]byte(`[{"code":"DISCOVERY","name":"Discovery","domain":"Knowledge","description":"An artifact is found."}]`))
+		case "/api/worlds/world-1/events":
+			cookie, err := request.Cookie("XSRF-TOKEN")
+			if err != nil || cookie.Value != "csrf-123" {
+				t.Errorf("missing CSRF cookie: %v", err)
+			}
+			if request.Header.Get("X-XSRF-TOKEN") != "csrf-123" {
+				t.Errorf("missing CSRF header: %q", request.Header.Get("X-XSRF-TOKEN"))
+			}
+			if err := json.NewDecoder(request.Body).Decode(&posted); err != nil {
+				t.Errorf("decode event request: %v", err)
+			}
+			writer.WriteHeader(http.StatusCreated)
+			_, _ = writer.Write([]byte(`{"title":"Discovery — Ember Hold"}`))
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	client, err := NewAPIClient(server.URL, "world-1", "access-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	title, err := client.CreateRandomEvent(
+		context.Background(),
+		4,
+		rand.New(rand.NewSource(17)),
+	)
+	if err != nil {
+		t.Fatalf("CreateRandomEvent returned error: %v", err)
+	}
+	if title != "Discovery — Ember Hold" {
+		t.Fatalf("title = %q", title)
+	}
+	if posted.Type != "DISCOVERY" || posted.TargetFactionID != "faction-1" {
+		t.Fatalf("unexpected generated event: %+v", posted)
+	}
+	if posted.Severity != 4 {
+		t.Fatalf("severity = %d, want 4", posted.Severity)
+	}
+}
+
+func TestRunSupportsPausePlayAndConfigurationCommands(t *testing.T) {
+	var output bytes.Buffer
+	client, err := NewAPIClient("http://localhost:8080", "world-1", "test-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Run(
+		context.Background(),
+		client,
+		time.Minute,
+		3,
+		strings.NewReader("interval 2\nseverity 5\nstatus\nplay\npause\nquit\n"),
+		&output,
+	)
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	for _, expected := range []string{
+		"Interval set to 2 minutes.",
+		"Severity set to 5.",
+		"Status: paused; interval: 2m0s; severity: 5.",
+		"Playing; first event in 2m0s.",
+		"Paused.",
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("output missing %q:\n%s", expected, output.String())
+		}
+	}
+}

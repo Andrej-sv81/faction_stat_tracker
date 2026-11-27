@@ -1,104 +1,156 @@
 package com.dnd.simulator.controller;
 
 import com.dnd.simulator.dto.ApiDtos;
+import com.dnd.simulator.service.FactionService;
+import com.dnd.simulator.service.WorldEventService;
 import com.dnd.simulator.service.WorldService;
+import com.dnd.simulator.service.WorldSimulationService;
+import com.dnd.simulator.service.WorldSnapshotService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
-import java.util.*;
-import org.springframework.http.*;
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/worlds")
 public class WorldController {
-  private final WorldService service;
+  private final WorldService worlds;
+  private final FactionService factions;
+  private final WorldEventService events;
+  private final WorldSimulationService simulations;
+  private final WorldSnapshotService snapshots;
   private final ObjectMapper mapper;
 
-  public WorldController(WorldService s, ObjectMapper m) {
-    service = s;
-    mapper = m;
+  public WorldController(
+      WorldService worlds,
+      FactionService factions,
+      WorldEventService events,
+      WorldSimulationService simulations,
+      WorldSnapshotService snapshots,
+      ObjectMapper mapper) {
+    this.worlds = worlds;
+    this.factions = factions;
+    this.events = events;
+    this.simulations = simulations;
+    this.snapshots = snapshots;
+    this.mapper = mapper;
   }
 
-  private String user(Authentication a) {
-    return a.getName();
+  private String userId(Authentication authentication) {
+    return authentication.getName();
   }
 
   @GetMapping
-  public List<?> list(Authentication a) {
-    return service.list(user(a));
+  public ResponseEntity<List<?>> list(Authentication authentication) {
+    return ResponseEntity.ok(worlds.list(userId(authentication)));
   }
 
   @PostMapping
-  public Object create(@Valid @RequestBody ApiDtos.WorldRequest r, Authentication a) {
-    return service.create(r, user(a));
+  public ResponseEntity<Object> create(
+      @Valid @RequestBody ApiDtos.WorldRequest request,
+      Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(worlds.create(request, userId(authentication)));
   }
 
   @GetMapping("/{id}")
-  public Object data(@PathVariable String id, Authentication a) {
-    var w = service.get(id, user(a));
-    var d = new HashMap<>(service.data(id, user(a)));
-    d.put("world", w);
-    return d;
+  public ResponseEntity<Object> data(
+      @PathVariable String id, Authentication authentication) {
+    return ResponseEntity.ok(snapshots.data(id, userId(authentication)));
   }
 
   @PostMapping("/{id}/factions")
-  public Object faction(
-      @PathVariable String id, @Valid @RequestBody ApiDtos.FactionRequest r, Authentication a) {
-    return service.faction(id, r, user(a));
+  public ResponseEntity<Object> faction(
+      @PathVariable String id,
+      @Valid @RequestBody ApiDtos.FactionRequest request,
+      Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(factions.createFaction(id, request, userId(authentication)));
   }
 
   @PutMapping("/{id}/factions/{factionId}")
-  public Object updateFaction(
+  public ResponseEntity<Object> updateFaction(
       @PathVariable String id,
       @PathVariable String factionId,
-      @Valid @RequestBody ApiDtos.FactionRequest r,
-      Authentication a) {
-    return service.updateFaction(id, factionId, r, user(a));
+      @Valid @RequestBody ApiDtos.FactionRequest request,
+      Authentication authentication) {
+    return ResponseEntity.ok(
+        factions.updateFaction(id, factionId, request, userId(authentication)));
   }
 
   @DeleteMapping("/{id}/factions/{factionId}")
-  public void deleteFaction(
-      @PathVariable String id, @PathVariable String factionId, Authentication a) {
-    service.deleteFaction(id, factionId, user(a));
+  public ResponseEntity<Void> deleteFaction(
+      @PathVariable String id,
+      @PathVariable String factionId,
+      Authentication authentication) {
+    factions.deleteFaction(id, factionId, userId(authentication));
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id}/events")
-  public Object event(
-      @PathVariable String id, @Valid @RequestBody ApiDtos.EventRequest r, Authentication a) {
-    return service.event(id, r, user(a));
+  public ResponseEntity<Object> event(
+      @PathVariable String id,
+      @Valid @RequestBody ApiDtos.EventRequest request,
+      Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(events.createEvent(id, request, userId(authentication)));
   }
 
   @PutMapping("/{id}/events/{eventId}")
-  public Object updateEvent(
+  public ResponseEntity<Object> updateEvent(
       @PathVariable String id,
       @PathVariable String eventId,
-      @Valid @RequestBody ApiDtos.EventRequest r,
-      Authentication a) {
-    return service.updateEvent(id, eventId, r, user(a));
+      @Valid @RequestBody ApiDtos.EventRequest request,
+      Authentication authentication) {
+    return ResponseEntity.ok(
+        events.updateEvent(id, eventId, request, userId(authentication)));
   }
 
   @DeleteMapping("/{id}/events/{eventId}")
-  public void deleteEvent(@PathVariable String id, @PathVariable String eventId, Authentication a) {
-    service.deleteEvent(id, eventId, user(a));
+  public ResponseEntity<Void> deleteEvent(
+      @PathVariable String id,
+      @PathVariable String eventId,
+      Authentication authentication) {
+    events.deleteEvent(id, eventId, userId(authentication));
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{id}/simulate")
-  public Object simulate(@PathVariable String id, Authentication a) {
-    return service.simulate(id, user(a));
+  public ResponseEntity<Object> simulate(
+      @PathVariable String id,
+      Authentication authentication) {
+    return ResponseEntity.ok(simulations.simulate(id, userId(authentication)));
   }
 
   @PostMapping("/import")
-  public Object importWorld(@RequestBody JsonNode snapshot, Authentication a) {
-    return service.importSnapshot(snapshot, user(a));
+  public ResponseEntity<Object> importWorld(
+      @RequestBody JsonNode snapshot,
+      Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(snapshots.importSnapshot(snapshot, userId(authentication)));
   }
 
   @GetMapping("/{id}/export")
-  public ResponseEntity<byte[]> export(@PathVariable String id, Authentication a)
+  public ResponseEntity<byte[]> export(
+      @PathVariable String id,
+      Authentication authentication)
       throws JsonProcessingException {
-    var snapshot = new HashMap<>(service.data(id, user(a)));
-    snapshot.put("world", service.get(id, user(a)));
+    Map<String, Object> snapshot = snapshots.data(id, userId(authentication));
     String json = mapper.writeValueAsString(snapshot);
     return ResponseEntity.ok()
         .contentType(MediaType.APPLICATION_JSON)

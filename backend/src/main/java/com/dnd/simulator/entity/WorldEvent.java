@@ -1,13 +1,16 @@
 package com.dnd.simulator.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,18 +25,26 @@ public class WorldEvent {
   @GeneratedValue(strategy = GenerationType.UUID)
   private String id;
 
+  @Version
+  @Column(nullable = false, columnDefinition = "bigint default 0")
+  private Long version;
+
   @Column(nullable = false)
   @Setter
   private String title;
 
   @Setter
-  private String type;
-  @Setter
-  private String category;
+  @ManyToOne(optional = false)
+  @JoinColumn(name = "event_type_code", nullable = false)
+  private EventType type;
+
   @Setter
   private String targetFactionId;
   @Setter
   private String secondTargetFactionId;
+  @Setter
+  @Column(nullable = false, columnDefinition = "integer default 3")
+  private int severity = 3;
   @Setter
   private int powerDelta;
   @Setter
@@ -55,13 +66,22 @@ public class WorldEvent {
   @Setter
   private World world;
 
-  public WorldEvent(String title, String type, String category, String targetFactionId, String details, World world) {
+  public WorldEvent(
+      String title,
+      EventType type,
+      String targetFactionId,
+      String details,
+      World world) {
     this.title = title;
     this.type = type;
-    this.category = category;
     this.targetFactionId = targetFactionId;
     this.details = details;
     this.world = world;
+  }
+
+  @JsonProperty("category")
+  public String getCategory() {
+    return type == null ? null : type.getDomain();
   }
 
   @JsonIgnore

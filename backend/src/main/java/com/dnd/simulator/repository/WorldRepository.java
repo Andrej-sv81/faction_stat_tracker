@@ -5,7 +5,7 @@ import java.util.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface WorldRepository extends JpaRepository<World, String> {
-  List<World> findByOwnerEmailOrderByCreatedAtDesc(String email);
+  List<World> findByOwnerIdOrderByCreatedAtDesc(String ownerId);
 
-  Optional<World> findByIdAndOwnerEmail(String id, String email);
+  Optional<World> findByIdAndOwnerId(String id, String ownerId);
 }
